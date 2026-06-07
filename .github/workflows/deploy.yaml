@@ -29,7 +29,7 @@ jobs:
 
       - name: Build Image
         run: |
-          make docker-build-env ENV=production
+          make docker-build ENV=production
 
       - name: Log in to Docker Hub
         if: ${{ secrets.DOCKER_USERNAME != '' }}
