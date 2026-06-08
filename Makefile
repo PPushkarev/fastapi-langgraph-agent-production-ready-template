@@ -117,6 +117,22 @@ docker-logs:
 	$(call load_env_file)
 	@APP_ENV=$(ENV) $(DOCKER_COMPOSE) --env-file .env.$(ENV) logs -f app db
 
+# Run Alembic migrations inside the running app container (where "db" resolves).
+# Requires the stack to be up first (make docker-up).
+docker-migrate:
+	$(call load_env_file)
+	@APP_ENV=$(ENV) $(DOCKER_COMPOSE) --env-file .env.$(ENV) exec -T app /app/.venv/bin/alembic upgrade head
+
+# Roll back the last migration inside the running app container.
+docker-migrate-downgrade:
+	$(call load_env_file)
+	@APP_ENV=$(ENV) $(DOCKER_COMPOSE) --env-file .env.$(ENV) exec -T app /app/.venv/bin/alembic downgrade -1
+
+# Show migration history inside the running app container.
+docker-migrate-history:
+	$(call load_env_file)
+	@APP_ENV=$(ENV) $(DOCKER_COMPOSE) --env-file .env.$(ENV) exec -T app /app/.venv/bin/alembic history --verbose
+
 # ---------------------------------------------------------------------------
 # Docker — full stack (API + DB + Prometheus + Grafana)
 # ---------------------------------------------------------------------------
@@ -176,6 +192,9 @@ help:
 	@echo "  docker-up            Start API + DB containers"
 	@echo "  docker-down          Stop containers"
 	@echo "  docker-logs          Tail container logs"
+	@echo "  docker-migrate       Run migrations inside the app container"
+	@echo "  docker-migrate-downgrade  Roll back last migration (in container)"
+	@echo "  docker-migrate-history    Show migration history (in container)"
 	@echo ""
 	@echo "Docker (full stack — includes Prometheus + Grafana):"
 	@echo "  stack-up             Start entire stack"
@@ -189,6 +208,7 @@ help:
         migrate migration migrate-downgrade migrate-history \
         eval eval-quick eval-no-report \
         lint format typecheck check pre-commit pre-commit-update \
-        docker-build docker-up docker-down docker-logs \
+        docker-build docker-up docker-down docker-logs docker-migrate \
+        docker-migrate-downgrade docker-migrate-history \
         stack-up stack-down stack-logs \
         clean help
