@@ -195,15 +195,14 @@ async def clear_chat_history(
 
 from pydantic import BaseModel
 import uuid
+import asyncio
 from app.schemas.chat import ChatRequest
 
-# 1. Модель для сканера
 class BarkingDogRequest(BaseModel):
     message: str
     mode: str = "agent_audit"
     chat_history: list = []
 
-# 2. Адаптер
 @router.post("/aegis-scan")
 async def barkingdog_adapter(request: BarkingDogRequest):
     fake_session_id = f"scan_session_{uuid.uuid4().hex[:8]}"
@@ -212,11 +211,14 @@ async def barkingdog_adapter(request: BarkingDogRequest):
     chat_req = ChatRequest(messages=[{"role": "user", "content": request.message}])
     
     try:
-        result = await agent.get_response(
-            chat_req.messages, 
-            session_id=fake_session_id, 
-            user_id=fake_user_id, 
-            username="BarkingDogScanner"
+        result = await asyncio.wait_for(
+            agent.get_response(
+                chat_req.messages,
+                session_id=fake_session_id,
+                user_id=fake_user_id,
+                username="BarkingDogScanner"
+            ),
+            timeout=30.0
         )
         
         reply = "Empty reply"
@@ -231,6 +233,9 @@ async def barkingdog_adapter(request: BarkingDogRequest):
         
         return {"reply": reply}
         
+    except asyncio.TimeoutError:
+        logger.warning("aegis_scan_timeout", session_id=fake_session_id)
+        return {"reply": "TIMEOUT: Agent did not respond in 30 seconds"}
     except Exception as e:
         logger.exception("aegis_scan_failed", error=str(e))
         return {"reply": f"Internal Error: {str(e)}"}
