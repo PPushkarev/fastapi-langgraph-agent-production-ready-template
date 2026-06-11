@@ -192,3 +192,24 @@ async def clear_chat_history(
     except Exception as e:
         logger.exception("clear_chat_history_failed", session_id=session.id, error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
+
+from pydantic import BaseModel
+import uuid
+
+class BarkingDogRequest(BaseModel):
+    message: str
+    mode: str = "agent_audit"
+    chat_history: list = []
+
+@router.post("/aegis-scan")
+async def barkingdog_adapter(request: BarkingDogRequest):
+    fake_user_id = f"scan_user_{uuid.uuid4().hex[:8]}"
+    fake_thread_id = f"scan_thread_{uuid.uuid4().hex[:8]}"
+    
+    agent_response = await chatbot_service.invoke(
+        message=request.message, 
+        user_id=fake_user_id, 
+        thread_id=fake_thread_id
+    )
+    
+    return agent_response.get("content", "Empty reply")
