@@ -1,27 +1,28 @@
-from pydantic import BaseModel
-import uuid
+"""API v1 router configuration.
 
-# 1. Модель, которую ждет твой сканер BarkingDog
-class BarkingDogRequest(BaseModel):
-    message: str
-    mode: str = "agent_audit"
-    chat_history: list = []
+This module sets up the main API router and includes all sub-routers for different
+endpoints like authentication and chatbot functionality.
+"""
 
-# 2. Изолированный эндпоинт-адаптер
-@router.post("/aegis-scan")
-async def barkingdog_adapter(request: BarkingDogRequest):
-    # Генерируем изолированного юзера для тестирования утечек данных
-    fake_user_id = f"scan_user_{uuid.uuid4().hex[:8]}"
-    fake_thread_id = f"scan_thread_{uuid.uuid4().hex[:8]}"
-    
-    # ПРОКИНЬ ЗАПРОС ВО ВНУТРЕННИЙ СЕРВИС ЖЕРТВЫ
-    # Посмотри, как соседние эндпоинты в этом файле вызывают LangGraph, и скопируй.
-    # Примерно так:
-    # agent_response = await chatbot_service.invoke(
-    #     message=request.message, 
-    #     user_id=fake_user_id, 
-    #     thread_id=fake_thread_id
-    # )
-    
-    # Возвращаем ответ в том виде, который переварит BarkingDog (просто строку)
-    return agent_response.get("content", "Empty reply")
+from fastapi import APIRouter
+
+from app.api.v1.auth import router as auth_router
+from app.api.v1.chatbot import router as chatbot_router
+from app.core.logging import logger
+
+api_router = APIRouter()
+
+# Include routers
+api_router.include_router(auth_router, prefix="/auth", tags=["Auth"])
+api_router.include_router(chatbot_router, prefix="/chatbot", tags=["Chatbot"])
+
+
+@api_router.get("/health")
+async def health_check():
+    """Health check endpoint.
+
+    Returns:
+        dict: Health status information.
+    """
+    logger.info("health_check_called")
+    return {"status": "healthy", "version": "1.0.0"}
