@@ -197,23 +197,21 @@ from pydantic import BaseModel
 import uuid
 from app.schemas.chat import ChatRequest
 
+# 1. Модель для сканера
 class BarkingDogRequest(BaseModel):
     message: str
     mode: str = "agent_audit"
     chat_history: list = []
 
+# 2. Адаптер
 @router.post("/aegis-scan")
 async def barkingdog_adapter(request: BarkingDogRequest):
-    # Генерируем уникальные ID для каждой атаки, чтобы изолировать контекст
     fake_session_id = f"scan_session_{uuid.uuid4().hex[:8]}"
     fake_user_id = f"scan_user_{uuid.uuid4().hex[:8]}"
     
-    # Формируем структуру сообщения так, как этого ждет их LangGraphAgent
-    # Pydantic сам преобразует словарь в нужный класс сообщения
     chat_req = ChatRequest(messages=[{"role": "user", "content": request.message}])
     
     try:
-        # Вызываем графового агента
         result = await agent.get_response(
             chat_req.messages, 
             session_id=fake_session_id, 
@@ -221,7 +219,6 @@ async def barkingdog_adapter(request: BarkingDogRequest):
             username="BarkingDogScanner"
         )
         
-        # result - это список сообщений. Нам нужно достать текст последнего ответа агента.
         reply = "Empty reply"
         if result and isinstance(result, list):
             last_msg = result[-1]
@@ -232,7 +229,6 @@ async def barkingdog_adapter(request: BarkingDogRequest):
             else:
                 reply = str(last_msg)
         
-        # BarkingDog ждет JSON с полем "reply"
         return {"reply": reply}
         
     except Exception as e:
